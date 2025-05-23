@@ -85,7 +85,8 @@ data class CredentialTypeConfig(
                 format = CredentialFormat.jwt_vc_json,
                 cryptographicBindingMethodsSupported = setOf("did"),
                 credentialSigningAlgValuesSupported = setOf("EdDSA", "ES256", "ES256K", "RSA"),
-
+        "CreditCard" to vc("VerifiableCredential", "CreditCard"),
+        "DesignatedVerifier" to vc("VerifiableCredential", "DesignatedVerifier"),
                 display = listOf(
                     DisplayProperties(
                         name = "Kiwi Access Card",
