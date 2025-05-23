@@ -80,6 +80,8 @@ data class CredentialTypeConfig(
         "LegalPerson" to vc("VerifiableCredential", "LegalPerson"),
         "LegalRegistrationNumber" to vc("VerifiableCredential", "LegalRegistrationNumber"),
         "GaiaXTermsAndConditions" to vc("VerifiableCredential", "GaiaXTermsAndConditions"),
+        "CreditCard" to vc("VerifiableCredential", "CreditCard"),
+        "DesignatedVerifier" to vc("VerifiableCredential", "DesignatedVerifier"),
 
         MDocTypes.ISO_MDL to vc(
             CredentialSupported(
