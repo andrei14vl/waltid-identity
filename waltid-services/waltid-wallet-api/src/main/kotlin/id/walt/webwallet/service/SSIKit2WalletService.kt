@@ -1,5 +1,6 @@
 package id.walt.webwallet.service
 
+import id.walt.policies.Verifier
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.KeyUse
@@ -29,6 +30,8 @@ import id.walt.oid4vc.requests.AuthorizationRequest
 import id.walt.oid4vc.requests.CredentialOfferRequest
 import id.walt.oid4vc.responses.AuthorizationErrorCode
 import id.walt.oid4vc.responses.TokenResponse
+import id.walt.policies.models.PolicyRequest
+import id.walt.policies.policies.JwtSignaturePolicy
 import id.walt.webwallet.FeatureCatalog
 import id.walt.webwallet.config.KeyGenerationDefaultsConfig
 import id.walt.webwallet.config.RegistrationDefaultsConfig
@@ -220,6 +223,28 @@ class SSIKit2WalletService(
             credentialWallet.processImplicitFlowAuthorization(presentationSession.authorizationRequest!!)
         val submitFormParams =
             getFormParameters(presentationSession.authorizationRequest, tokenResponse, presentationSession)
+
+        // Before submitting the data to the verifier check if the request contains restricted credentials.
+        // Validate that the verifier presented the required credentials in this case.
+
+        // Initialise DID Service to be able to resolve DIDs
+        DidService.minimalInit()
+
+        /// Verify the JWT Credential:
+        val results = parameter.verifierJwt?.let {
+            Verifier.verifyCredential(
+                it,
+                listOf(
+                    PolicyRequest(JwtSignaturePolicy())
+                    // other policies ...
+                )
+            )
+        }
+
+        results?.forEach { verification ->
+            println("[${verification.request.policy.name}] -> Success=${verification.isSuccess()}, Result=${verification.result}")
+        }
+
 
         val resp = this.http.submitForm(
             presentationSession.authorizationRequest.responseUri

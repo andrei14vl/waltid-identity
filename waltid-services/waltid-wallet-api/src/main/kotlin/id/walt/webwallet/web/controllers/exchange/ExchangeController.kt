@@ -156,6 +156,7 @@ fun Application.exchange() = walletRoute {
                     selectedCredentials = selectedCredentialIds,
                     disclosures = disclosures,
                     note = req.note,
+                    verifierJwt = req.verifierJwt,
                 )
             ) // TODO add disclosures here
 
@@ -301,6 +302,7 @@ data class UsePresentationRequest(
     val selectedCredentials: List<String>, // todo: automatically choose matching
     val disclosures: Map<String, List<String>>? = null,
     val note: String? = null,
+    val verifierJwt: String? = null,
 )
 
 data class PresentationRequestParameter(
@@ -309,4 +311,5 @@ data class PresentationRequestParameter(
     val selectedCredentials: List<String>,
     val disclosures: Map<String, List<String>>? = null,
     val note: String? = null,
+    val verifierJwt: String? = null,
 )
