@@ -50,6 +50,17 @@
     <CenterMain>
       <h1 class="text-2xl font-semibold mb-2">Presentation</h1>
 
+      <Disclosure>
+        <DisclosureButton class="py-2">
+          <ButtonsWaltButton class="bg-gray-400 text-white"
+          >View presentation definition JSON
+          </ButtonsWaltButton>
+        </DisclosureButton>
+        <DisclosurePanel class="text-gray-500 overflow-x-scroll pb-2">
+          <pre>{{ presentationDefinition }}</pre>
+        </DisclosurePanel>
+      </Disclosure>
+
       <LoadingIndicator v-if="immediateAccept" class="my-6 mb-12 w-full">
         Presenting credential(s)...
       </LoadingIndicator>
@@ -166,16 +177,24 @@
         </div>
       </fieldset>
 
-      <Disclosure>
-        <DisclosureButton class="py-2">
-          <ButtonsWaltButton class="bg-gray-400 text-white"
-            >View presentation definition JSON
-          </ButtonsWaltButton>
-        </DisclosureButton>
-        <DisclosurePanel class="text-gray-500 overflow-x-scroll pb-2">
-          <pre>{{ presentationDefinition }}</pre>
-        </DisclosurePanel>
-      </Disclosure>
+      <form>
+        <div class="mt-2">
+          <div class="-m-0.5 rounded-lg p-0.5">
+            <label for="vf-cred">Verifier credentials are required to access this data.</label>
+            <div>
+          <textarea
+              id="vf-cred"
+              v-model="text"
+              autofocus="autofocus"
+              class="block w-full rounded-md border-0 px-3 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
+              name="vf-cred"
+              placeholder="Add the JWT provided by the verifier"
+              rows="5"
+          />
+            </div>
+          </div>
+        </div>
+      </form>
     </CenterMain>
   </div>
 </template>

@@ -10,7 +10,6 @@ export async function usePresentation(query: any) {
   const failMessage = ref("Unknown error occurred.");
 
   const currentWallet = useCurrentWallet();
-
   async function resolvePresentationRequest(request: string) {
     try {
       const response = await $fetch(
@@ -32,6 +31,8 @@ export async function usePresentation(query: any) {
   );
   const presentationUrl = new URL(request as string);
   const presentationParams = presentationUrl.searchParams;
+
+  console.log("usePresentation__log: presentationParams: " + presentationParams);
 
   const verifierHost = new URL(
     presentationParams.get("response_uri") ??
@@ -120,12 +121,17 @@ export async function usePresentation(query: any) {
   });
 
   async function acceptPresentation() {
+    const verifierJwt: string = (document.getElementById('vf-cred') as HTMLTextAreaElement)?.value || ''; // Verifier JWT text input
+
     const req = {
       //did: String, // todo: choose DID of shared credential // for now wallet-api chooses the default wallet did
       presentationRequest: request,
       selectedCredentials: selectedCredentialIds.value,
       disclosures: encodedDisclosures.value,
+      verifierJwt: verifierJwt,
     };
+
+    console.log("usePresentation__log: Calling usePresentationRequest. Req data: ", req);
 
     const response = await fetch(
       `/wallet-api/wallet/${currentWallet.value}/exchange/usePresentationRequest`,
@@ -144,6 +150,9 @@ export async function usePresentation(query: any) {
       if (parsedResponse.redirectUri) {
         navigateTo(parsedResponse.redirectUri, {
           external: true,
+          open: {
+            target: "_blank",
+          },
         });
       } else {
         window.alert("Presentation successful, no redirect URL supplied.");
