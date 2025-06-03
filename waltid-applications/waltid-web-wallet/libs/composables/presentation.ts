@@ -57,6 +57,40 @@ export async function usePresentation(query: any) {
     },
   );
 
+  async function extractRequiredVerifierCredentials(credentials: Array<{
+    id: string;
+    document: string;
+    parsedDocument?: string;
+    disclosures?: string;
+  }>): Set<string> {
+    const result = new Set<string>();
+
+    try {
+      for (const cred of credentials) {
+        const parsedDocument = cred.parsedDocument
+
+        if (parsedDocument !== null && typeof parsedDocument === 'object' && 'requiredVerifierCredentials' in parsedDocument) {
+          const credentials = parsedDocument.requiredVerifierCredentials;
+
+          // Check if requiredVerifierCredentials is an array
+          if (Array.isArray(credentials)) {
+            // Add all values to the set (duplicates automatically handled)
+            credentials.forEach(credential => result.add(credential));
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error parsing JSON:', error);
+      // Return empty set if JSON parsing fails
+      return new Set<string>();
+    }
+
+    return result;
+  }
+
+  const requiredVerifierCredentials = await extractRequiredVerifierCredentials(matchedCredentials);
+  const requiredVerifierCredentialsArr = [...requiredVerifierCredentials];
+
   const selection = ref<{ [key: string]: boolean }>({});
   const selectedCredentialIds = computed(() =>
     Object.entries(selection.value)
@@ -131,8 +165,6 @@ export async function usePresentation(query: any) {
       verifierJwt: verifierJwt,
     };
 
-    console.log("usePresentation__log: Calling usePresentationRequest. Req data: ", req);
-
     const response = await fetch(
       `/wallet-api/wallet/${currentWallet.value}/exchange/usePresentationRequest`,
       {
@@ -196,5 +228,6 @@ export async function usePresentation(query: any) {
     acceptPresentation,
     failed,
     failMessage,
+    requiredVerifierCredentialsArr,
   };
 }
