@@ -80,13 +80,13 @@ data class CredentialTypeConfig(
         "LegalPerson" to vc("VerifiableCredential", "LegalPerson"),
         "LegalRegistrationNumber" to vc("VerifiableCredential", "LegalRegistrationNumber"),
         "GaiaXTermsAndConditions" to vc("VerifiableCredential", "GaiaXTermsAndConditions"),
+        "CreditCard" to vc("VerifiableCredential", "CreditCard"),
+        "DesignatedVerifier" to vc("VerifiableCredential", "DesignatedVerifier"),
         "KiwiAccessCredential_jwt_vc_json" to vc(
             CredentialSupported(
                 format = CredentialFormat.jwt_vc_json,
                 cryptographicBindingMethodsSupported = setOf("did"),
                 credentialSigningAlgValuesSupported = setOf("EdDSA", "ES256", "ES256K", "RSA"),
-        "CreditCard" to vc("VerifiableCredential", "CreditCard"),
-        "DesignatedVerifier" to vc("VerifiableCredential", "DesignatedVerifier"),
                 display = listOf(
                     DisplayProperties(
                         name = "Kiwi Access Card",
