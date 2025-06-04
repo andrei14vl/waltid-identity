@@ -12,6 +12,7 @@ import id.walt.commons.web.UnsupportedMediaTypeException
 import id.walt.commons.web.WebException
 import id.walt.crypto.keys.*
 import id.walt.crypto.keys.jwk.JWKKey
+import id.walt.crypto.utils.JsonUtils.toJsonElement
 import id.walt.crypto.utils.JsonUtils.toJsonObject
 import id.walt.did.dids.DidService
 import id.walt.did.dids.registrar.LocalRegistrar
@@ -79,6 +80,7 @@ import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.nio.charset.StandardCharsets
+import kotlin.collections.orEmpty
 import kotlin.time.Duration.Companion.seconds
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -202,9 +204,8 @@ class SSIKit2WalletService(
 
         val authReq =
             AuthorizationRequest.fromHttpParametersAuto(parseQueryString(Url(parameter.request).encodedQuery).toMap())
-        logger.debug { "Auth req: $authReq" }
 
-        logger.debug { "Using presentation request, selected credentials: ${parameter.selectedCredentials}" }
+        println("usePresentationRequest - Auth req: $authReq")
 
         val presentationSession =
             credentialWallet.initializeAuthorization(authReq, 60.seconds, parameter.selectedCredentials.toSet())
@@ -227,24 +228,13 @@ class SSIKit2WalletService(
         // Before submitting the data to the verifier check if the request contains restricted credentials.
         // Validate that the verifier presented the required credentials in this case.
 
-        // Initialise DID Service to be able to resolve DIDs
-        DidService.minimalInit()
-
-        /// Verify the JWT Credential:
-        val results = parameter.verifierJwt?.let {
-            Verifier.verifyCredential(
-                it,
-                listOf(
-                    PolicyRequest(JwtSignaturePolicy())
-                    // other policies ...
-                )
-            )
+        val allRequiredVerifierCredentials = getAllRequiredCredentials(parameter.selectedCredentials)
+        if (allRequiredVerifierCredentials.isNotEmpty()) {
+            val res = validateVerifierCredentials(parameter.verifierJwt, allRequiredVerifierCredentials)
+            if (res.isFailure) {
+                return res
+            }
         }
-
-        results?.forEach { verification ->
-            println("[${verification.request.policy.name}] -> Success=${verification.isSuccess()}, Result=${verification.result}")
-        }
-
 
         val resp = this.http.submitForm(
             presentationSession.authorizationRequest.responseUri
@@ -771,6 +761,91 @@ class SSIKit2WalletService(
                 "apv" to JsonPrimitive(Base64URL.encode(authorizationRequest.nonce!!).toString())
             )
         )
+    }
+
+    private fun getAllRequiredCredentials(credentialIds: List<String>): Set<String> {
+        val allRequiredVerifierCredentials = mutableSetOf<String>()
+        for (credentialId in credentialIds) {
+            val credential = credentialService.get(walletId, credentialId)
+            println("usePresentationRequest - selectedCred data: $credential")
+
+            val requiredVerifierCredentials = credential?.parsedDocument?.get("requiredVerifierCredentials")
+            requiredVerifierCredentials?.jsonArray?.forEach {
+                allRequiredVerifierCredentials.add(it.jsonPrimitive.content)
+            }
+        }
+
+        println("all required verifier credentials: $allRequiredVerifierCredentials")
+
+        return allRequiredVerifierCredentials.toSet()
+    }
+
+    private suspend fun validateVerifierCredentials(verifierJwt: String?, allRequiredVerifierCredentials: Set<String>): Result<String?> {
+        if (allRequiredVerifierCredentials.size > 1) {
+            return Result.failure(
+                PresentationError(
+                    message="Presentation failed - Only one required verifier credential supported for a presentation.",
+                    redirectUri = ""
+                )
+            )
+        }
+
+        if (verifierJwt == null) {
+            return Result.failure(
+                PresentationError(
+                    message="Presentation failed - Verifier credential not provided and is required for the requested credential.",
+                    redirectUri = ""
+                )
+            )
+        }
+
+        // Initialise DID Service to be able to resolve DIDs
+        DidService.minimalInit()
+
+        /// Verify the JWT Credential:
+        val results = verifierJwt.let {
+            Verifier.verifyCredential(
+                it,
+                listOf(
+                    PolicyRequest(JwtSignaturePolicy())
+                    // other policies ...
+                )
+            )
+        }
+
+        println("Verifier JWT results: $results")
+
+        for (verification in results.orEmpty()) {
+            println("[${verification.request.policy.name}] -> Success=${verification.isSuccess()}, Result=${verification.result}")
+
+            if (!verification.isSuccess()) {
+                return Result.failure(
+                    PresentationError(
+                        message = "Presentation failed - Invalid Verifier JWT.",
+                        redirectUri = ""
+                    )
+                )
+            } else {
+                // check if the type of the verifier credential is among the required credentials.
+                // known issue: should check this only once, not for each policy...
+                val verifierJWTType = verification.result.getOrThrow().toJsonElement().jsonObject["vc"]?.jsonObject?.get("type")?.jsonArray
+                println("verifier type: $verifierJWTType")
+                val requiredCredentialsMatch = verifierJWTType?.any {
+                    allRequiredVerifierCredentials.contains(it.jsonPrimitive.content)
+                }
+
+                if (!requiredCredentialsMatch!!) {
+                    return Result.failure(
+                        PresentationError(
+                            message = "Presentation failed - Verifier credential doesn't match the required type.",
+                            redirectUri = ""
+                        )
+                    )
+                }
+            }
+        }
+
+        return Result.success(null)
     }
 }
 
